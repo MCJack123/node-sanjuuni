@@ -23,9 +23,9 @@ Napi::Object RGBImageAt(const Napi::CallbackInfo& info) {
     try {
         const uchar3& color = img->at(info[0].As<Napi::Number>().Uint32Value(), info[0].As<Napi::Number>().Uint32Value());
         Napi::Object retval = Napi::Object::New(env);
-        retval.Set("r", Napi::Number::New(env, color.x));
+        retval.Set("b", Napi::Number::New(env, color.x));
         retval.Set("g", Napi::Number::New(env, color.y));
-        retval.Set("b", Napi::Number::New(env, color.z));
+        retval.Set("r", Napi::Number::New(env, color.z));
         return retval;
     } catch (const std::out_of_range &e) {
         Napi::RangeError::New(env, e.what()).ThrowAsJavaScriptException();
@@ -80,13 +80,13 @@ std::vector<Vec3b> GetPalette(Napi::Env env, Napi::Value value) {
         Napi::Value v = array.Get(i);
         if (!v.IsObject()) Napi::TypeError::New(env, "Palette expected").ThrowAsJavaScriptException();
         Napi::Object obj = v.As<Napi::Object>();
-        Napi::Value rv = obj.Get("r");
+        Napi::Value rv = obj.Get("b");
         if (!rv.IsNumber()) Napi::TypeError::New(env, "Palette expected").ThrowAsJavaScriptException();
         val[0] = rv.As<Napi::Number>().Uint32Value();
         Napi::Value gv = obj.Get("g");
         if (!gv.IsNumber()) Napi::TypeError::New(env, "Palette expected").ThrowAsJavaScriptException();
         val[1] = gv.As<Napi::Number>().Uint32Value();
-        Napi::Value bv = obj.Get("b");
+        Napi::Value bv = obj.Get("r");
         if (!bv.IsNumber()) Napi::TypeError::New(env, "Palette expected").ThrowAsJavaScriptException();
         val[2] = bv.As<Napi::Number>().Uint32Value();
         retval.push_back(val);
@@ -98,9 +98,9 @@ Napi::Array NewPalette(Napi::Env env, const std::vector<Vec3b>& palette) {
     Napi::Array retval = Napi::Array::New(env);
     for (int i = 0; i < palette.size(); i++) {
         Napi::Object obj = Napi::Object::New(env);
-        obj.Set("r", Napi::Number::New(env, palette[i][0]));
+        obj.Set("b", Napi::Number::New(env, palette[i][0]));
         obj.Set("g", Napi::Number::New(env, palette[i][1]));
-        obj.Set("b", Napi::Number::New(env, palette[i][2]));
+        obj.Set("r", Napi::Number::New(env, palette[i][2]));
         retval.Set(i, obj);
     }
     return retval;
@@ -175,7 +175,7 @@ Napi::Object M_makeRGBImage(const Napi::CallbackInfo& info) {
                         delete img;
                         Napi::TypeError::New(env, "Invalid pixel array").ThrowAsJavaScriptException();
                     }
-                    imgrow[x].x = carr.Get(0U).As<Napi::Number>().Uint32Value();
+                    imgrow[x].z = carr.Get(0U).As<Napi::Number>().Uint32Value();
                     if (!carr.Get(1U).IsNumber()) {
                         delete img;
                         Napi::TypeError::New(env, "Invalid pixel array").ThrowAsJavaScriptException();
@@ -185,14 +185,14 @@ Napi::Object M_makeRGBImage(const Napi::CallbackInfo& info) {
                         delete img;
                         Napi::TypeError::New(env, "Invalid pixel array").ThrowAsJavaScriptException();
                     }
-                    imgrow[x].z = carr.Get(2U).As<Napi::Number>().Uint32Value();
+                    imgrow[x].x = carr.Get(2U).As<Napi::Number>().Uint32Value();
                 } else if (color.IsObject()) {
                     Napi::Object carr = color.As<Napi::Object>();
                     if (!carr.Get("r").IsNumber()) {
                         delete img;
                         Napi::TypeError::New(env, "Invalid pixel array").ThrowAsJavaScriptException();
                     }
-                    imgrow[x].x = carr.Get("r").As<Napi::Number>().Uint32Value();
+                    imgrow[x].z = carr.Get("r").As<Napi::Number>().Uint32Value();
                     if (!carr.Get("g").IsNumber()) {
                         delete img;
                         Napi::TypeError::New(env, "Invalid pixel array").ThrowAsJavaScriptException();
@@ -202,7 +202,7 @@ Napi::Object M_makeRGBImage(const Napi::CallbackInfo& info) {
                         delete img;
                         Napi::TypeError::New(env, "Invalid pixel array").ThrowAsJavaScriptException();
                     }
-                    imgrow[x].z = carr.Get("b").As<Napi::Number>().Uint32Value();
+                    imgrow[x].x = carr.Get("b").As<Napi::Number>().Uint32Value();
                 } else {
                     delete img;
                     Napi::TypeError::New(env, "Invalid pixel array").ThrowAsJavaScriptException();
@@ -230,12 +230,12 @@ Napi::Object M_makeRGBImage(const Napi::CallbackInfo& info) {
             for (unsigned y = 0; y < height; y++) {
                 Mat::row row = (*img)[y];
                 for (unsigned x = 0; x < width; x++) {
-                    unsigned pos = (y * height + x) * 3;
+                    unsigned pos = (y * width + x) * 3;
                     if (pos + 2 >= array.ByteLength()) {
                         delete img;
                         Napi::RangeError::New(env, "Image data too short for specified size").ThrowAsJavaScriptException();
                     }
-                    if (bgr) row[x] = {data[pos + 2], data[pos + 1], data[pos]};
+                    if (!bgr) row[x] = {data[pos + 2], data[pos + 1], data[pos]};
                     else row[x] = {data[pos], data[pos + 1], data[pos + 2]};
                 }
             }
@@ -252,16 +252,16 @@ Napi::Object M_makeRGBImage(const Napi::CallbackInfo& info) {
             for (unsigned y = 0; y < height; y++) {
                 Mat::row row = (*img)[y];
                 for (unsigned x = 0; x < width; x++) {
-                    unsigned pos = (y * height + x) * 4;
+                    unsigned pos = (y * width + x) * 4;
                     if (pos + 3 >= array.ByteLength()) {
                         delete img;
                         Napi::RangeError::New(env, "Image data too short for specified size").ThrowAsJavaScriptException();
                     }
                     switch (tp) {
-                        case 0: row[x] = {data[pos], data[pos + 1], data[pos + 2]}; break;
-                        case 1: row[x] = {data[pos + 1], data[pos + 2], data[pos + 3]}; break;
-                        case 2: row[x] = {data[pos + 2], data[pos + 1], data[pos]}; break;
-                        case 3: row[x] = {data[pos + 3], data[pos + 2], data[pos + 1]}; break;
+                        case 0: row[x] = {data[pos + 2], data[pos + 1], data[pos]}; break;
+                        case 1: row[x] = {data[pos + 3], data[pos + 2], data[pos + 1]}; break;
+                        case 2: row[x] = {data[pos], data[pos + 1], data[pos + 2]}; break;
+                        case 3: row[x] = {data[pos + 1], data[pos + 2], data[pos + 3]}; break;
                     }
                 }
             }
@@ -287,12 +287,12 @@ Napi::Object M_makeRGBImage(const Napi::CallbackInfo& info) {
             for (unsigned y = 0; y < height; y++) {
                 Mat::row row = (*img)[y];
                 for (unsigned x = 0; x < width; x++) {
-                    unsigned pos = (y * height + x) * 3;
+                    unsigned pos = (y * width + x) * 3;
                     if (pos + 2 >= buffer.ByteLength()) {
                         delete img;
                         Napi::RangeError::New(env, "Image data too short for specified size").ThrowAsJavaScriptException();
                     }
-                    if (bgr) row[x] = {data[pos + 2], data[pos + 1], data[pos]};
+                    if (!bgr) row[x] = {data[pos + 2], data[pos + 1], data[pos]};
                     else row[x] = {data[pos], data[pos + 1], data[pos + 2]};
                 }
             }
@@ -309,16 +309,16 @@ Napi::Object M_makeRGBImage(const Napi::CallbackInfo& info) {
             for (unsigned y = 0; y < height; y++) {
                 Mat::row row = (*img)[y];
                 for (unsigned x = 0; x < width; x++) {
-                    unsigned pos = (y * height + x) * 4;
+                    unsigned pos = (y * width + x) * 4;
                     if (pos + 3 >= buffer.ByteLength()) {
                         delete img;
                         Napi::RangeError::New(env, "Image data too short for specified size").ThrowAsJavaScriptException();
                     }
                     switch (tp) {
-                        case 0: row[x] = {data[pos], data[pos + 1], data[pos + 2]}; break;
-                        case 1: row[x] = {data[pos + 1], data[pos + 2], data[pos + 3]}; break;
-                        case 2: row[x] = {data[pos + 2], data[pos + 1], data[pos]}; break;
-                        case 3: row[x] = {data[pos + 3], data[pos + 2], data[pos + 1]}; break;
+                        case 0: row[x] = {data[pos + 2], data[pos + 1], data[pos]}; break;
+                        case 1: row[x] = {data[pos + 3], data[pos + 2], data[pos + 1]}; break;
+                        case 2: row[x] = {data[pos], data[pos + 1], data[pos + 2]}; break;
+                        case 3: row[x] = {data[pos + 1], data[pos + 2], data[pos + 3]}; break;
                     }
                 }
             }
@@ -346,12 +346,12 @@ Napi::Object M_makeRGBImage(const Napi::CallbackInfo& info) {
                 for (unsigned y = 0; y < height; y++) {
                     Mat::row row = (*img)[y];
                     for (unsigned x = 0; x < width; x++) {
-                        unsigned pos = (y * height + x) * 3;
+                        unsigned pos = (y * width + x) * 3;
                         if (pos + 2 >= array.ByteLength()) {
                             delete img;
                             Napi::RangeError::New(env, "Image data too short for specified size").ThrowAsJavaScriptException();
                         }
-                        if (bgr) row[x] = {data[pos + 2], data[pos + 1], data[pos]};
+                        if (!bgr) row[x] = {data[pos + 2], data[pos + 1], data[pos]};
                         else row[x] = {data[pos], data[pos + 1], data[pos + 2]};
                     }
                 }
@@ -368,16 +368,16 @@ Napi::Object M_makeRGBImage(const Napi::CallbackInfo& info) {
                 for (unsigned y = 0; y < height; y++) {
                     Mat::row row = (*img)[y];
                     for (unsigned x = 0; x < width; x++) {
-                        unsigned pos = (y * height + x) * 4;
+                        unsigned pos = (y * width + x) * 4;
                         if (pos + 3 >= array.ByteLength()) {
                             delete img;
                             Napi::RangeError::New(env, "Image data too short for specified size").ThrowAsJavaScriptException();
                         }
                         switch (tp) {
-                            case 0: row[x] = {data[pos], data[pos + 1], data[pos + 2]}; break;
-                            case 1: row[x] = {data[pos + 1], data[pos + 2], data[pos + 3]}; break;
-                            case 2: row[x] = {data[pos + 2], data[pos + 1], data[pos]}; break;
-                            case 3: row[x] = {data[pos + 3], data[pos + 2], data[pos + 1]}; break;
+                            case 0: row[x] = {data[pos + 2], data[pos + 1], data[pos]}; break;
+                            case 1: row[x] = {data[pos + 3], data[pos + 2], data[pos + 1]}; break;
+                            case 2: row[x] = {data[pos], data[pos + 1], data[pos + 2]}; break;
+                            case 3: row[x] = {data[pos + 1], data[pos + 2], data[pos + 3]}; break;
                         }
                     }
                 }
@@ -409,17 +409,17 @@ Napi::Object M_makeRGBImage(const Napi::CallbackInfo& info) {
             for (unsigned y = 0; y < height; y++) {
                 Mat::row row = (*img)[y];
                 for (unsigned x = 0; x < width; x++) {
-                    unsigned pos = y * height + x;
+                    unsigned pos = y * width + x;
                     if (pos >= array.ByteLength()) {
                         delete img;
                         Napi::RangeError::New(env, "Image data too short for specified size").ThrowAsJavaScriptException();
                     }
                     uint32_t d = data[pos];
                     switch (tp) {
-                        case 0: row[x] = {(uint8_t)((d >> 24) & 0xFF), (uint8_t)((d >> 16) & 0xFF), (uint8_t)((d >> 8) & 0xFF)}; break;
-                        case 1: row[x] = {(uint8_t)((d >> 16) & 0xFF), (uint8_t)((d >> 8) & 0xFF), (uint8_t)((d) & 0xFF)}; break;
-                        case 2: row[x] = {(uint8_t)((d >> 8) & 0xFF), (uint8_t)((d >> 16) & 0xFF), (uint8_t)((d >> 24) & 0xFF)}; break;
-                        case 3: row[x] = {(uint8_t)((d) & 0xFF), (uint8_t)((d >> 8) & 0xFF), (uint8_t)((d >> 16) & 0xFF)}; break;
+                        case 0: row[x] = {(uint8_t)((d >> 8) & 0xFF), (uint8_t)((d >> 16) & 0xFF), (uint8_t)((d >> 24) & 0xFF)}; break;
+                        case 1: row[x] = {(uint8_t)((d) & 0xFF), (uint8_t)((d >> 8) & 0xFF), (uint8_t)((d >> 16) & 0xFF)}; break;
+                        case 2: row[x] = {(uint8_t)((d >> 24) & 0xFF), (uint8_t)((d >> 16) & 0xFF), (uint8_t)((d >> 8) & 0xFF)}; break;
+                        case 3: row[x] = {(uint8_t)((d >> 16) & 0xFF), (uint8_t)((d >> 8) & 0xFF), (uint8_t)((d) & 0xFF)}; break;
                     }
                 }
             }
